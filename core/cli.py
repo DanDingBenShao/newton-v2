@@ -47,7 +47,7 @@ def cmd_agent():
     """Launch the standalone agent."""
     check_key()
     launch_terminal("standalone_agent.py")
-    print("Agent launched in new terminal. Write tasks to ~/.claude/newton_task.jsonl")
+    print("Agent launched in new terminal. Write tasks to ~/.newton-x/newton_task.jsonl")
 
 
 def cmd_all():

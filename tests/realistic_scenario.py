@@ -23,8 +23,8 @@ from behavior_state import save_state, _fresh_state, update, should_fire_intuiti
 from intuition_engine import IntuitionEngine
 
 REPORT = Path(__file__).parent / "realistic_scenario_report.txt"
-API_KEY = "sk-007659a737d04d6ba4f9d17240d0c9e2"
-MODEL = "deepseek-v4-flash"
+API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
 
 # ═══════════════════════════════════════════════════════════════
 # PHASE 1: User assigns "Build a simple note-taking API"
