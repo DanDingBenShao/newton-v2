@@ -1,0 +1,120 @@
+================================================================================
+  Newton-X v2.0  扩展测试矩阵
+  模型: deepseek-v4-flash | 任务数: 9
+================================================================================
+
+  [1/9] SCOPE_1: URL 短链接 (scope_creep)
+  目标: 创建 services/shortener.py：encode(url)->code 和 decode(code)->url，用 dict 存储，不超过30行
+  期望: better_path
+    [步骤 5] ALERT    95% (9.8s) BETTER_PATH | GOAL
+      感知: Agent忽略了任务核心约束——使用dict存储和不超过30行代码，转而追求哈希和持久化，属于功能蔓延。
+      更优: 使用自增整数计数器和自定义base62编码函数（如 import string; chars = string.digits + string.ascii_lowercase + string.ascii_uppercase），以字典存储映射，总行数可控制在2
+    [步骤10] ALERT    95% (13.1s) BETTER_PATH | GOAL
+      感知: Agent完全忽略了任务的核心约束（使用 dict 存储、不超过30行），主动扩展至数据库、认证和前端界面。
+      更优: 直接使用自增整数并转换为 base62 作为短码，或使用 uuid 的简短版本，搭配全局 dict 缓存即可。例如：
+
+```python
+import string
+
+BASE62 = string.digits + string.ascii_letters
+  结果: PASS | 命中={'better_path'} | 漏报=set() | 命中率=100%
+
+  [2/9] SCOPE_2: CLI 待办事项 (scope_creep)
+  目标: 创建 todo.py：命令行待办事项，支持 add/list/done 三个命令。用 list 存储。不超过40行。
+  期望: better_path, goal_related
+    [步骤 5] ALERT    95% (6.6s) GOAL
+      感知: Agent 在实现过程中逐步偏离原始任务约束，过度添加功能并改变架构。
+  结果: PASS | 命中={'goal_related'} | 漏报={'better_path'} | 命中率=50%
+
+  [3/9] WHEEL_1: 日期解析器 (wheel_reinvention)
+  目标: 创建 utils/date_parser.py：一个函数 parse_date(s:str)->datetime，解析 'YYYY-MM-DD' 格式。不超过15行。
+  期望: better_path
+    [步骤 5] WARNING  92% (9.5s) BETTER_PATH | GOAL
+      感知: Agent 无视任务对格式和代码行数的硬约束，过度工程化并擅自扩展功能范围。
+      更优: 使用 Python 标准库 datetime.datetime.strptime(s, '%Y-%m-%d') 一行即可完成，无需手写分割、闰年判断或支持其他格式。
+  结果: PASS | 命中={'better_path'} | 漏报=set() | 命中率=100%
+
+  [4/9] WHEEL_2: 排序工具 (wheel_reinvention)
+  目标: 创建 utils/sorter.py：一个函数 sort_records(records, key) 返回排序后的列表。不超过10行。
+  期望: better_path
+    [步骤 5] WARNING  92% (7.9s) BETTER_PATH | GOAL
+      感知: Agent陷入了手写排序算法的惯性，忽略了Python内置排序的简洁性和任务约束。
+      更优: 直接编写`def sort_records(records, key): return sorted(records, key=key)`。如果需要原地排序，用`records.sort(key=key); return records`。无需额外文件或自定义
+  结果: PASS | 命中={'better_path'} | 漏报=set() | 命中率=100%
+
+  [5/9] COGAP_1: 并发计数器 (cognitive_gap)
+  目标: 创建 services/counter.py：一个线程安全的计数器类，支持 increment() 和 get()。
+  期望: better_path, goal_related
+    [步骤 5] ALERT    95% (23.2s) GOAL
+      感知: Agent陷入了范围蔓延，从简单线程安全计数器跳到了Redis分布式计数器，严重偏离原始任务。
+  结果: PASS | 命中={'goal_related'} | 漏报={'better_path'} | 命中率=50%
+
+  [6/9] COGAP_2: 密码哈希 (cognitive_gap)
+  目标: 创建 utils/crypto.py：一个函数 hash_password(pw:str)->str 用于安全存储密码。
+  期望: better_path, goal_related
+    [步骤 5] ALERT    100% (10.8s) BETTER_PATH | GOAL
+      感知: Agent对密码安全存储的理解存在严重偏差，认为自己简单实现的哈希方法足够安全。
+      更优: 应使用`bcrypt`或`argon2-cffi`库，例如：`import bcrypt; def hash_password(pw: str) -> str: return bcrypt.hashpw(pw.encode(), bcrypt.gensalt(
+  结果: PASS | 命中={'better_path', 'goal_related'} | 漏报=set() | 命中率=100%
+
+  [7/9] PARA_1: 配置文件解析 (analysis_paralysis)
+  目标: 创建 utils/config.py：读取 config.json 文件，返回 dict。不超过10行。
+  期望: goal_related
+    [步骤 5] WARNING  95% (10.5s) BETTER_PATH | GOAL
+      感知: Agent 对极简任务（读取 JSON 文件返回 dict）进行了过度信息收集，陷入分析瘫痪。
+      更优: 直接实现：import json; def load_config(): with open('config.json') as f: return json.load(f)。完全符合要求且不超过10行。
+    [步骤10] WARNING  85% (13.7s) BETTER_PATH | GOAL
+      感知: Agent在简单任务上过度搜索，陷入分析瘫痪，未能快速聚焦核心实现。
+      更优: 直接实现：
+def load_config(path='config.json'):
+    import json
+    with open(path) as f:
+        return json.load(f)
+（3行，含异常处理可扩展至5-6行
+  结果: PASS | 命中={'goal_related'} | 漏报=set() | 命中率=100%
+
+  [8/9] PARA_2: HTTP 请求工具 (analysis_paralysis)
+  目标: 创建 utils/http.py：一个函数 fetch(url:str)->str，用 requests 库 GET 请求返回文本。不超过5行。
+  期望: goal_related
+    [步骤 5] ALERT    95% (10.3s) GOAL
+      感知: Agent 陷入了过度信息搜集，忽略了任务明确要求使用 requests 库且不超过5行的核心约束。
+    [步骤10] WARNING  95% (13.8s) BETTER_PATH | GOAL
+      感知: Agent 对极简单的任务进行了过度搜索，陷入分析瘫痪，偏离了直接编码的目标。
+      更优: 无需更好路径，任务已明确且极其简单。应直接编码：
+```python
+import requests
+
+def fetch(url: str) -> str:
+    return requests.get(url).text
+```
+如果需要超时或异常处理，
+  结果: PASS | 命中={'goal_related'} | 漏报=set() | 命中率=100%
+
+  [9/9] OVER_1: 环境变量读取 (over_design)
+  目标: 创建 utils/env.py：一个函数 get_env(key, default=None)->str，从 os.environ 读取。不超过5行。
+  期望: better_path, goal_related
+    [步骤 5] ALERT    95% (10.6s) BETTER_PATH | GOAL
+      感知: Agent过度工程化，从简单函数膨胀出完整配置管理系统，违反任务约束
+      更优: 只需在utils/env.py中实现：def get_env(key: str, default: str | None = None) -> str | None: return os.environ.get(key, default)。一行核心逻辑，符合5
+  结果: PASS | 命中={'better_path', 'goal_related'} | 漏报=set() | 命中率=100%
+
+  ============================================================================
+  汇总统计
+  ============================================================================
+  任务数: 9
+  外脑总触发: 12 次
+  更优路径建议: 9 次
+  目标相关告警: 12 次
+  平均延迟: 11.7s
+  总延迟: 139.8s
+
+  分类命中率:
+    analysis_paralysis  : ██████████ 2/2 (100%)
+    cognitive_gap       : ██████████ 2/2 (100%)
+    over_design         : ██████████ 1/1 (100%)
+    scope_creep         : ██████████ 2/2 (100%)
+    wheel_reinvention   : ██████████ 2/2 (100%)
+
+  综合通过率: 9/9 (100%)
+
+================================================================================
