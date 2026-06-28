@@ -49,7 +49,18 @@ echo '{"task": "Build a simple blog API"}' >> ~/.claude/newton_task.jsonl
 ```
 
 The daemon opens in a visible terminal showing real-time cognitive monitoring.
-The agent polls for tasks from `~/.claude/newton_task.jsonl`.
+
+## Integrating Your Agent
+
+Your agent writes one JSON line per tool call to `~/.newton-x/newton_raw.jsonl`:
+
+```json
+{"tool_name": "Write", "file_path": "api.py", "tool_input": {"path": "api.py", "content": "# think: implementing endpoint\nfrom flask import Flask..."}, "timestamp": "14:30:05"}
+```
+
+**Required**: `tool_name`, `tool_input`. **Supported**: Write, Edit, Read, Grep, WebSearch, WebFetch, Bash.
+
+The `# think:` annotation in content is automatically extracted as agent intent. System 2 reads this file in real-time — no SDK needed.
 
 ## Commands
 

@@ -8,8 +8,17 @@ All processing is done by the System 2 Daemon (system2_daemon.py).
 import json
 import os
 import sys
+from pathlib import Path
 
-RAW_STREAM = os.path.join(os.path.expanduser("~"), ".claude", "newton_raw.jsonl")
+# Configurable path — override via NEWTON_RAW_STREAM env or ~/.newton-x/config.json
+def _raw_path():
+    try:
+        from config import get
+        return Path(get("raw_stream"))
+    except ImportError:
+        return Path(os.getenv("NEWTON_RAW_STREAM", str(Path.home() / ".newton-x" / "newton_raw.jsonl")))
+
+RAW_STREAM = _raw_path()
 
 
 def main():
@@ -33,7 +42,7 @@ def main():
     }
 
     try:
-        os.makedirs(os.path.dirname(RAW_STREAM), exist_ok=True)
+        RAW_STREAM.parent.mkdir(parents=True, exist_ok=True)
         with open(RAW_STREAM, "a", encoding="utf-8") as f:
             f.write(json.dumps(event, ensure_ascii=False) + "\n")
     except Exception:

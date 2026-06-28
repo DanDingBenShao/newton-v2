@@ -9,7 +9,14 @@ import os
 import time
 from pathlib import Path
 
-STATE_FILE = Path.home() / ".claude" / "newton_behavior.json"
+def _state_path():
+    try:
+        from config import get
+        return Path(get("behavior_state"))
+    except ImportError:
+        return Path(os.getenv("NEWTON_BEHAVIOR_STATE", str(Path.home() / ".newton-x" / "behavior_state.json")))
+
+STATE_FILE = _state_path()
 
 # ── Tool classification ────────────────────────────────────
 

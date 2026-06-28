@@ -9,7 +9,14 @@ import os
 from pathlib import Path
 from datetime import datetime, timezone
 
-STREAM_FILE = Path.home() / ".claude" / "thinking_stream.json"
+def _stream_path():
+    try:
+        from config import get
+        return Path(get("thinking_stream"))
+    except ImportError:
+        return Path(os.getenv("NEWTON_THINKING_STREAM", str(Path.home() / ".newton-x" / "thinking_stream.json")))
+
+STREAM_FILE = _stream_path()
 MAX_ENTRIES = 100
 
 

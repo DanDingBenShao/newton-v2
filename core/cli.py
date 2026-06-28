@@ -3,6 +3,7 @@
 Newton-X CLI — single entry point for the entire system.
 
 Usage:
+  newton init     Initialize Newton-X (create config, set API key)
   newton start    Launch System 2 daemon + monitor (visible terminal)
   newton agent    Launch standalone agent (polls for tasks)
   newton all      Launch both daemon + agent
@@ -56,6 +57,18 @@ def cmd_all():
     cmd_agent()
 
 
+def cmd_init():
+    """Initialize Newton-X: create config and directory structure."""
+    from config import init_config, CONFIG_DIR
+    api_key = os.getenv("DEEPSEEK_API_KEY", "")
+    if not api_key:
+        api_key = input("DeepSeek API Key (leave empty to set later): ").strip()
+    init_config(api_key)
+    print(f"  Config:   {CONFIG_DIR / 'config.json'}")
+    print(f"  Streams:  {CONFIG_DIR}")
+    print("  Ready. Run 'newton start' to launch the monitor.")
+
+
 def cmd_test():
     """Run extended test matrix."""
     check_key()
@@ -81,6 +94,7 @@ def main():
 
     cmd = sys.argv[1]
     commands = {
+        "init": cmd_init,
         "start": cmd_start,
         "agent": cmd_agent,
         "all": cmd_all,

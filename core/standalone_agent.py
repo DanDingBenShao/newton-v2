@@ -10,16 +10,27 @@ from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────
 
-API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions")
-API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-if not API_KEY:
-    raise RuntimeError("DEEPSEEK_API_KEY environment variable is required")
-MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
+def _cfg(key: str, env_key: str, default: str) -> str:
+    try:
+        from config import get
+        return get(key, default)
+    except ImportError:
+        return os.getenv(env_key, default)
 
-HOME = Path.home()
-TASK_FILE = HOME / ".claude" / "newton_task.jsonl"       # Claude Code writes tasks here
-RAW_STREAM = HOME / ".claude" / "newton_raw.jsonl"       # Agent writes tool calls here
-WORK_DIR = Path(os.getenv("AGENT_WORK_DIR", str(HOME)))   # Where agent operates
+def _path(key: str, env_key: str, fallback: str) -> Path:
+    try:
+        from config import get
+        return Path(get(key))
+    except ImportError:
+        return Path(os.getenv(env_key, str(Path.home() / ".newton-x" / fallback)))
+
+API_URL = _cfg("api_url", "DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions")
+API_KEY = _cfg("api_key", "DEEPSEEK_API_KEY", "")
+MODEL = _cfg("model", "DEEPSEEK_MODEL", "deepseek-v4-flash")
+
+TASK_FILE = _path("task_file", "NEWTON_TASK_FILE", "newton_task.jsonl")
+RAW_STREAM = _path("raw_stream", "NEWTON_RAW_STREAM", "newton_raw.jsonl")
+WORK_DIR = Path(os.getenv("AGENT_WORK_DIR", str(Path.home())))
 
 # ── Tool definitions (for DeepSeek function calling) ──────────
 

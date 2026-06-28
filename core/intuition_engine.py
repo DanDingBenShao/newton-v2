@@ -7,11 +7,17 @@ import json, os, time, subprocess
 from typing import Optional
 from thinking_stream_manager import ThinkingStreamManager
 
-API_URL = os.getenv("DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions")
-API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
-if not API_KEY:
-    raise RuntimeError("DEEPSEEK_API_KEY environment variable is required")
-MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
+# Config — file > env > default
+def _cfg(key: str, env_key: str, default: str) -> str:
+    try:
+        from config import get
+        return get(key, default)
+    except ImportError:
+        return os.getenv(env_key, default)
+
+API_URL = _cfg("api_url", "DEEPSEEK_API_URL", "https://api.deepseek.com/v1/chat/completions")
+API_KEY = _cfg("api_key", "DEEPSEEK_API_KEY", "")
+MODEL = _cfg("model", "DEEPSEEK_MODEL", "deepseek-v4-flash")
 
 SYSTEM_PROMPT = """# Role
 你是一个认知监控器。你在观察一个 AI Agent 的行为序列，用你的直觉发现它的认知问题。

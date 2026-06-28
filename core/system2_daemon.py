@@ -12,14 +12,20 @@ import sys
 import time
 from pathlib import Path
 
-# ── Paths ────────────────────────────────────────────────────
+# ── Paths (configurable via ~/.newton-x/config.json or env vars) ──
 
-HOME = Path.home()
-RAW_STREAM = HOME / ".claude" / "newton_raw.jsonl"       # Hook writes here
-AUDIT_STREAM = HOME / ".claude" / "audit_stream.jsonl"    # Monitor output
-PID_FILE = HOME / ".claude" / "newton_monitor.pid"
+def _path(key: str, env_key: str, fallback_name: str) -> Path:
+    try:
+        from config import get
+        return Path(get(key))
+    except ImportError:
+        return Path(os.getenv(env_key, str(Path.home() / ".newton-x" / fallback_name)))
 
-# ── v2.0 Modules ─────────────────────────────────────────────
+RAW_STREAM = _path("raw_stream", "NEWTON_RAW_STREAM", "newton_raw.jsonl")
+AUDIT_STREAM = _path("audit_stream", "NEWTON_AUDIT_STREAM", "audit_stream.jsonl")
+PID_FILE = _path("pid_file", "NEWTON_PID_FILE", "newton_monitor.pid")
+
+# Lazy import — only when needed
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
