@@ -35,17 +35,55 @@ Agent Tool Calls
 ## Quick Start
 
 ```bash
-# 1. Launch the monitor (visible terminal)
-python core/system2_daemon.py
+# 1. Install
+pip install -e .
 
-# 2. Launch the agent (or use your own agent that writes to newton_raw.jsonl)
-python core/standalone_agent.py
+# 2. Set your API key
+export DEEPSEEK_API_KEY=sk-your-key-here
 
-# 3. Send tasks by writing to ~/.claude/newton_task.jsonl
+# 3. Launch everything (daemon + agent)
+newton all
+
+# 4. Send a task to the agent
 echo '{"task": "Build a simple blog API"}' >> ~/.claude/newton_task.jsonl
 ```
 
-Or double-click `core/launch_all.bat` (Windows).
+The daemon opens in a visible terminal showing real-time cognitive monitoring.
+The agent polls for tasks from `~/.claude/newton_task.jsonl`.
+
+## Commands
+
+```
+newton start    Launch System 2 daemon + monitor terminal
+newton agent    Launch standalone agent
+newton all      Launch both daemon + agent
+newton test     Run 9-task extended test matrix
+newton demo     Run realistic 3-phase scenario
+```
+
+## Hook Setup (Claude Code)
+
+Add to `~/.claude/settings.json`:
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [{
+          "type": "command",
+          "command": "python core/audit_hook.py"
+        }]
+      }
+    ]
+  }
+}
+```
+
+Then add to `CLAUDE.md`:
+```
+每次 Write/Edit 时，代码第一行必须写 # think: <一句话总结>
+```
 
 ## Run Tests
 
