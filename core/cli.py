@@ -28,7 +28,7 @@ def launch_terminal(script: str):
     if sys.platform == "win32":
         subprocess.Popen(
             ["cmd", "/c", "start", "Newton-X", "cmd", "/k",
-             f"chcp 65001 >nul && cd /d {CORE_DIR} && python {script}"],
+             f'chcp 65001 >nul && cd /d "{CORE_DIR}" && python {script}'],
             shell=False,
         )
     else:

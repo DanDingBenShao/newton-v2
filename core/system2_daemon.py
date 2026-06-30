@@ -80,7 +80,7 @@ def render(entries: list[dict], intuition_results: list[dict]):
         output_lines.append(f"  {BD}外脑直觉{X}  置信度 {ins.get('confidence', 0):.0%}")
         output_lines.append(f"  {ins.get('perception', '')}")
         output_lines.append(f"  -> {ins.get('regulation', '')}")
-        bs = ins.get("better_solution")
+        bs = ins.get("better_path")
         if bs:
             output_lines.append(f"  {G}更优解法:{X}")
             for line in bs.split("\n")[:6]:
@@ -170,11 +170,11 @@ def process_event(event: dict) -> dict | None:
     return result
 
 
-def fire_intuition() -> dict | None:
+def fire_intuition(task_context: str | None = None) -> dict | None:
     """Fire LLM intuition engine. Returns insight dict or None."""
     engine = get_intuition()
     engine.stream = mgr  # Wire the shared stream
-    insight = engine.analyze(17)
+    insight = engine.analyze(look_back=17, task_context=task_context)
     reset_intuition_counter()
     return insight
 
@@ -201,6 +201,11 @@ def main():
     RAW_STREAM.touch()
     AUDIT_STREAM.touch()
 
+    entries: list[dict] = []
+    intuitions: list[dict] = []
+    current_task: str | None = None
+    last_render = 0
+
     # Load existing events (don't fire intuition for historical data)
     if RAW_STREAM.exists():
         with open(RAW_STREAM, "r", encoding="utf-8") as f:
@@ -212,19 +217,11 @@ def main():
                         result = process_event(event)
                         if result:
                             entries.append(result)
-                    except Exception:
+                    except Exception as e:
+                        print(f"[Daemon] history load error: {e}", file=sys.stderr)
                         pass
         # Reset counter after loading history so intuition fires at the right time
         save_state(_fresh_state())
-
-    # Now open in tail mode for new events
-    raw_fh = open(RAW_STREAM, "r", encoding="utf-8")
-    raw_fh.seek(0, 2)
-
-    entries: list[dict] = []
-    intuitions: list[dict] = []
-    current_task: str | None = None
-    last_render = 0
 
     try:
         while True:
@@ -261,7 +258,7 @@ def main():
                                 "action": "WARN",
                                 "reasoning": insight.get("perception", ""),
                                 "suggestion": insight.get("regulation", ""),
-                                "better_solution": insight.get("better_solution", ""),
+                                "better_path": insight.get("better_path", ""),
                                 "primary_vector": "B",
                                 "confidence": insight.get("confidence", 0),
                                 "duration_ms": 0,
@@ -270,7 +267,8 @@ def main():
                             entries.append(ins_entry)
                             with open(AUDIT_STREAM, "a", encoding="utf-8") as f:
                                 f.write(json.dumps(ins_entry, ensure_ascii=False) + "\n")
-                except Exception:
+                except Exception as e:
+                    print(f"[Daemon] event error: {e}", file=sys.stderr)
                     pass
 
             if had_new:
@@ -283,7 +281,7 @@ def main():
         print(f"\n{Y}监控已停止。{X}")
     finally:
         try: PID_FILE.unlink()
-        except: pass
+        except Exception: pass
 
 
 if __name__ == "__main__":
