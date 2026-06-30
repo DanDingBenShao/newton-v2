@@ -162,7 +162,7 @@ class IntuitionEngine:
             result = subprocess.run(
                 ["curl", "-s", "-w", "HTTP:%{http_code}",
                  "--connect-timeout", "30", "--max-time", "90",
-                 "-X", "POST", "https://api.deepseek.com/v1/chat/completions",
+                 "-X", "POST", API_URL,
                  "-H", "Content-Type: application/json",
                  "-H", f"Authorization: Bearer {API_KEY}",
                  "-d", payload],

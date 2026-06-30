@@ -172,7 +172,14 @@ def update(tool_name: str, file_path: str = "") -> dict:
 
 # ── Intuition trigger ────────────────────────────────────────
 
-INTUITION_INTERVAL = 5  # Fire intuition every N tool calls
+def _get_interval() -> int:
+    try:
+        from config import get
+        return int(get("intuition_interval", 5))
+    except (ImportError, ValueError):
+        return 5
+
+INTUITION_INTERVAL = _get_interval()  # Fire intuition every N tool calls
 
 
 def should_fire_intuition() -> bool:
