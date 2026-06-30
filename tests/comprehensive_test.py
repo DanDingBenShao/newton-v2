@@ -200,18 +200,12 @@ def run():
                 p(f"  放大: {insight.get('amplification')}")
                 p(f"  调控: {insight.get('regulation')}")
                 p()
-
-                gd = insight.get('goal_deviation')
-                if gd:
-                    p(f"  *** 目标偏离 ***")
-                    p(f"  {gd}")
+                bp = insight.get("better_path")
+                if bp:
+                    p(f"  *** 更优路径 ***")
+                    p(f"  {bp}")
                     p()
 
-                bs = insight.get('better_solution')
-                if bs:
-                    p(f"  *** 更优解法 ***")
-                    p(f"  {bs}")
-                    p()
 
                 trace = insight.get('thought_trace', [])
                 if trace:
@@ -273,10 +267,10 @@ def run():
         p(f"  告警详情:")
         for t in ok_triggers:
             ins = t['insight']
-            has_gd = "[GOAL_DEV]" if ins.get('goal_deviation') else ""
-            has_bs = "[BETTER_SOL]" if ins.get('better_solution') else ""
-            extra = f" {has_gd} {has_bs}" if (has_gd or has_bs) else ""
-            p(f"    步骤 {t['step']:2d}: {ins.get('signal'):8s} {ins.get('confidence'):.0%}  {ins.get('perception')[:80]}{extra}")
+            has_gd = any(kw in str(ins.get('perception','')) for kw in ['偏离','膨胀','过度','超出'])
+            has_bs = bool(ins.get('better_path'))
+            extra = f" [GOAL_DEV]" if has_gd else ""
+            extra += f" [BETTER_PATH]" if has_bs else ""
     if fail_triggers:
         p(f"  故障详情:")
         for t in fail_triggers:

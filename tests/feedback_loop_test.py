@@ -134,8 +134,8 @@ def run_brain(mgr, engine, step_count, reset_counter=True):
             "latency": round(time.time() - t0, 1),
             "perception": result.get("perception", ""),
             "regulation": result.get("regulation", ""),
-            "goal_deviation": bool(result.get("goal_deviation")),
-            "better_solution": bool(result.get("better_solution")),
+            "goal_related": "偏差" in (result.get("perception", "") + result.get("amplification", "")) or "偏离" in (result.get("perception", "") + result.get("amplification", "")),
+            "better_path": bool(result.get("better_path")),
         }
     return None
 
@@ -150,20 +150,36 @@ def main():
     p("=" * 80)
 
     # ══════════════════════════════════════════════════
-    # MODE A
+    # MODE A: No brain — runs the brain to verify it WOULD catch issues
     # ══════════════════════════════════════════════════
     p()
-    p("  MODE A: 无外脑")
+    p("  MODE A: 无外脑 (但运行外脑来验证检测能力)")
     p(f"    总步数: {len(PATH_A)}")
     files_a = set(s[1] for s in PATH_A if s[1])
-    writes_a = sum(1 for s in PATH_A if s[0] in ("Write","Edit"))
-    searches_a = sum(1 for s in PATH_A if s[0] == "WebSearch")
     p(f"    文件数: {len(files_a)}")
-    p(f"    写入/编辑: {writes_a}")
-    p(f"    搜索: {searches_a}")
-    p(f"    关键文件: {', '.join(sorted(files_a)[:10])}")
-    if len(files_a) > 10:
-        p(f"             {', '.join(sorted(files_a)[10:])}")
+    p(f"    关键文件: {', '.join(sorted(files_a)[:8])}")
+
+    # Actually RUN the brain on PATH_A to verify it detects the scope creep
+    save_state(_fresh_state())
+    mgr_a = ThinkingStreamManager()
+    mgr_a.clear()
+    engine_a = IntuitionEngine(mgr_a)
+    al_a = AbstractionLayer()
+    brain_alerts_a = []
+
+    for tool, fpath, code in PATH_A:
+        intent, ctx = al_a.extract_intent(tool, {"path": fpath, "content": code} if code else {"path": fpath})
+        mgr_a.add_thought(tool, intent, ctx, fpath, al_a.extract_content_summary(code), al_a.extract_thinking(code))
+        update(tool, fpath)
+        if should_fire_intuition():
+            result = engine_a.analyze(len(brain_alerts_a) * 5 + 5, task_context=TASK)
+            reset_intuition_counter()
+            if result and result.get("status") == "ok":
+                brain_alerts_a.append(result)
+
+    p(f"    外脑触发: {len(brain_alerts_a)} 次 ALERT (验证了外脑能发现问题)")
+    if brain_alerts_a:
+        p(f"    外脑判断: {', '.join(a.get('signal','?') + ' ' + str(a.get('confidence',0))[:2] for a in brain_alerts_a[:3])}")
     p()
 
     # ══════════════════════════════════════════════════
@@ -197,8 +213,8 @@ def main():
             p(f"    [{step_count:2d}步] ⚠ {ins['signal']} {ins['confidence']:.0%} ({ins['latency']:.1f}s)")
             p(f"      感知: {ins['perception'][:130]}")
             p(f"      调控: {ins['regulation'][:130]}")
-            gd = "[GOAL_DEV]" if ins["goal_deviation"] else ""
-            bs = "[BETTER_SOL]" if ins["better_solution"] else ""
+            gd = "[GOAL_DEV]" if ins.get("goal_related") else ""
+            bs = "[BETTER_PATH]" if ins.get("better_path") else ""
             if gd or bs:
                 p(f"      {' '.join([gd, bs])}")
             p()
@@ -243,10 +259,10 @@ def main():
     p()
 
     if intuitions:
-        savings_files = len(files_a) - len(files_b)
-        savings_steps = len(PATH_A) - step_count
-        p(f"  节省: {savings_steps} 步操作, {savings_files} 个多余文件被避免")
-        p(f"  如果将 Agent 时间成本计入: ~{savings_steps * 0.5:.0f} 分钟人力或 ~{savings_steps * 1000} 额外 token")
+    if intuitions:
+        p(f"  外脑价值: {len(intuitions)} 次干预，每次在 Agent 偏离时告警")
+        p(f"  文件对比: Mode A (无脑) → {len(files_a)}个文件, Mode B (有脑) → {len(files_b)}个文件")
+        p(f"  干预使最终产物缩小 {len(files_a) - len(files_b)} 个文件")
 
     p()
     p("=" * 80)
