@@ -205,6 +205,10 @@ def execute_tool(call: dict) -> str:
         elif name == "run_bash":
             cmd = args["command"]
             write_raw_event("Bash", {"command": cmd}, "")
+            # Safety: reject obviously destructive commands
+            dangerous = ["rm -rf /", "format", "mkfs", "dd if=", ":(){ :|:& };:"]
+            if any(d in cmd.lower() for d in dangerous):
+                return "REJECTED: dangerous command blocked"
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30, cwd=str(WORK_DIR))
             output = result.stdout[:3000] + (result.stderr[:1000] if result.stderr else "")
             return output or "(no output)"
@@ -222,23 +226,20 @@ def execute_tool(call: dict) -> str:
         elif name == "web_search":
             query = args["query"]
             write_raw_event("WebSearch", {"query": query}, "")
-            # Use curl for reliability
-            result = subprocess.run(
-                ["curl", "-s", "--connect-timeout", "10",
-                 f"https://api.deepseek.com/v1/chat/completions",
-                 "-H", "Content-Type: application/json",
-                 "-H", f"Authorization: Bearer {API_KEY}",
-                 "-d", json.dumps({
-                     "model": MODEL, "max_tokens": 200,
-                     "messages": [{"role": "user", "content": f"Search result for: {query}. Provide a concise factual answer in Chinese."}]
-                 })],
-                capture_output=True, timeout=20,
-            )
             try:
-                body = json.loads(result.stdout.decode("utf-8"))
-                return body["choices"][0]["message"]["content"][:1000]
+                import httpx
+                resp = httpx.post(
+                    API_URL,
+                    json={"model": MODEL, "max_tokens": 200,
+                          "messages": [{"role": "user", "content": f"Web search for: {query}. Give a concise factual answer in Chinese."}]},
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {API_KEY}"},
+                    timeout=httpx.Timeout(20.0, connect=10.0),
+                )
+                if resp.status_code == 200:
+                    return resp.json()["choices"][0]["message"]["content"][:1000]
+                return f"(search unavailable: {resp.status_code})"
             except Exception:
-                return f"(simulated) For '{query}', common results suggest checking standard library docs and PyPI for existing packages."
+                return f"(simulated) For '{query}', check standard library docs and PyPI for existing packages."
 
         elif name == "finish_task":
             return args.get("summary", "Task complete")
@@ -265,29 +266,17 @@ Rules:
 
 
 def call_llm(messages: list[dict], tools: list[dict] | None = None) -> dict:
-    """Call DeepSeek API via curl. Returns the assistant message."""
-    payload_dict = {
-        "model": MODEL,
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 2000,
-    }
-    if tools:
-        payload_dict["tools"] = tools
-
-    payload = json.dumps(payload_dict)
-
-    result = subprocess.run(
-        ["curl", "-s", "--connect-timeout", "30", "--max-time", "60",
-         "-X", "POST", API_URL,
-         "-H", "Content-Type: application/json",
-         "-H", f"Authorization: Bearer {API_KEY}",
-         "-d", payload],
-        capture_output=True, timeout=65,
+    import httpx
+    payload = {"model": MODEL, "messages": messages, "temperature": 0.7, "max_tokens": 2000}
+    if tools: payload["tools"] = tools
+    resp = httpx.post(
+        API_URL, json=payload,
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {API_KEY}"},
+        timeout=httpx.Timeout(60.0, connect=30.0),
     )
-    body = json.loads(result.stdout.decode("utf-8"))
-    return body["choices"][0]["message"]
-
+    if resp.status_code != 200:
+        raise Exception(f"API error: {resp.status_code}")
+    return resp.json()["choices"][0]["message"]
 
 def run_task(task_description: str) -> str:
     """Execute one task. Returns completion summary."""

@@ -147,38 +147,28 @@ class IntuitionEngine:
         return raw
 
     def _call_api(self, system_prompt: str, user_message: str) -> Optional[dict]:
-        import json as _json
-        payload = _json.dumps({
-            "model": MODEL,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
-            "temperature": 0.7,
-            "max_tokens": 2000,
-        })
-
+        import httpx
         try:
-            result = subprocess.run(
-                ["curl", "-s", "-w", "HTTP:%{http_code}",
-                 "--connect-timeout", "30", "--max-time", "90",
-                 "-X", "POST", API_URL,
-                 "-H", "Content-Type: application/json",
-                 "-H", f"Authorization: Bearer {API_KEY}",
-                 "-d", payload],
-                capture_output=True, timeout=95,
+            resp = httpx.post(
+                API_URL,
+                json={
+                    "model": MODEL,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message},
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 2000,
+                },
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {API_KEY}",
+                },
+                timeout=httpx.Timeout(90.0, connect=30.0),
             )
-            if result.returncode != 0:
+            if resp.status_code != 200:
                 return None
-            stdout = result.stdout.decode("utf-8") if isinstance(result.stdout, bytes) else result.stdout
-            http_code = "200"
-            if "HTTP:" in stdout:
-                parts = stdout.rsplit("HTTP:", 1)
-                http_code = parts[1][:3]
-                stdout = parts[0]
-            if http_code != "200":
-                return None
-            body = _json.loads(stdout)
+            body = resp.json()
             raw = body["choices"][0]["message"]["content"]
             return self._parse(raw)
         except Exception:
